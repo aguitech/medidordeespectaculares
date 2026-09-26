@@ -83,6 +83,13 @@ if STATIC_DIR.exists():
             return FileResponse(str(idx))
         return {"service": settings.app_name, "api": "/api"}
 
+    @app.get("/apply", include_in_schema=False)
+    def apply_page():
+        apply = STATIC_DIR / "apply.html"
+        if apply.exists():
+            return FileResponse(str(apply))
+        return {"redirect": "/"}
+
     @app.get("/healthz", include_in_schema=False)
     def root_health():
         return {"service": settings.app_name, "status": "up"}
