@@ -1,0 +1,55 @@
+# docker-compose.yml — Production stack
+# Para EasyPanel: usar el "Docker Compose" deploy, no este archivo directo.
+# Este archivo es la referencia local. La forma final de desplegar es la sección README.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-medidordeespectaculares}
+      POSTGRES_USER: ${POSTGRES_USER:-kyc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kyc_secret_local_only}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-kyc}:${POSTGRES_PASSWORD:-kyc_secret_local_only}@postgres:5432/${POSTGRES_DB:-medidordeespectaculares}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production-32-chars-min!}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-ChangeMeNow!2026}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@medidordeespectaculares.com}
+    ports:
+      - "8000:8000"
+
+volumes:
+  postgres_data:
